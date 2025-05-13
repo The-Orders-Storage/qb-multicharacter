@@ -7,22 +7,35 @@ local Countries = json.decode(LoadResourceFile(GetCurrentResourceName(), '/count
 local function GiveStarterItems(source)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
+    local runningUmIdCard = GetResourceState('um-idcard') == 'started'
+
     for _, v in pairs(QBCore.Shared.StarterItems) do
         local info = {}
+
+        if runningUmIdCard and (v.item == 'id_card' or v.item == 'driver_license') then
+            exports['um-idcard']:CreateMetaLicense(src, { v.item })
+            goto continue
+        end
+
         if v.item == 'id_card' then
-            info.citizenid = Player.PlayerData.citizenid
-            info.firstname = Player.PlayerData.charinfo.firstname
-            info.lastname = Player.PlayerData.charinfo.lastname
-            info.birthdate = Player.PlayerData.charinfo.birthdate
-            info.gender = Player.PlayerData.charinfo.gender
-            info.nationality = Player.PlayerData.charinfo.nationality
+            info = {
+                citizenid = Player.PlayerData.citizenid,
+                firstname = Player.PlayerData.charinfo.firstname,
+                lastname = Player.PlayerData.charinfo.lastname,
+                birthdate = Player.PlayerData.charinfo.birthdate,
+                gender = Player.PlayerData.charinfo.gender,
+                nationality = Player.PlayerData.charinfo.nationality
+            }
         elseif v.item == 'driver_license' then
-            info.firstname = Player.PlayerData.charinfo.firstname
-            info.lastname = Player.PlayerData.charinfo.lastname
-            info.birthdate = Player.PlayerData.charinfo.birthdate
-            info.type = 'Class C Driver License'
+            info = {
+                firstname = Player.PlayerData.charinfo.firstname,
+                lastname = Player.PlayerData.charinfo.lastname,
+                birthdate = Player.PlayerData.charinfo.birthdate,
+                type = 'Class C Driver License'
+            }
         end
         exports['qb-inventory']:AddItem(src, v.item, v.amount, false, info, 'qb-multicharacter:GiveStarterItems')
+        ::continue::
     end
 end
 
@@ -197,10 +210,22 @@ QBCore.Functions.CreateCallback('qb-multicharacter:server:setupCharacters', func
     end)
 end)
 
+--[[
 QBCore.Functions.CreateCallback('qb-multicharacter:server:getSkin', function(_, cb, cid)
     local result = MySQL.query.await('SELECT * FROM playerskins WHERE citizenid = ? AND active = ?', { cid, 1 })
     if result[1] ~= nil then
         cb(result[1].model, result[1].skin)
+    else
+        cb(nil)
+    end
+end)
+--]]
+
+-- illenium appearance
+QBCore.Functions.CreateCallback("qb-multicharacter:server:getSkin", function(_, cb, cid)
+    local result = MySQL.query.await('SELECT * FROM playerskins WHERE citizenid = ? AND active = ?', {cid, 1})
+    if result[1] ~= nil then
+        cb(json.decode(result[1].skin))
     else
         cb(nil)
     end
